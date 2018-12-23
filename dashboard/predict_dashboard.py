@@ -14,6 +14,8 @@ from pyspark.ml import Pipeline
 from pyspark.ml.classification import GBTClassifier
 from pyspark.ml.feature import StringIndexer, VectorIndexer
 from pyspark.sql import SparkSession
+import pandas as pd
+import plotly.graph_objs as go
 
 model = None
 click = 0
@@ -77,7 +79,7 @@ app.layout = html.Div([
 
     html.H2(id = 'output', children='Wait for result', style={'color': 'red'}),
 
-    html.Div(children='''
+    html.Div(id = 'div', children='''
     Dashboard: A web Prediction framework for League of Legend .
 '''),
     html.Div([
@@ -161,13 +163,165 @@ app.layout = html.Div([
 
 
     ], style={'columnCount': 2}),
-    html.Button('Submit', id='button')
+    html.Button('Submit', id='button'),
+    html.Button('Graph', id='graph')
 ])
 
 count = 0
 def click(num):
     global count
     count = num
+
+
+
+@app.callback(
+    Output(component_id='div', component_property='children'),
+    [Input(component_id='t1', component_property='value'),
+     Input(component_id='t2', component_property='value'),
+     Input(component_id='min', component_property='value'),
+     Input(component_id='sec', component_property='value'),
+     Input(component_id='fb', component_property='value'),
+     Input(component_id='fi', component_property='value'),
+     Input(component_id='fd', component_property='value'),
+     Input(component_id='ft', component_property='value'),
+     Input(component_id='t1tk', component_property='value'),
+     Input(component_id='t2tk', component_property='value'),
+     Input(component_id='t2ik', component_property='value'),
+     Input(component_id='t2ik', component_property='value'),
+     Input(component_id='first_dragon', component_property='value'),
+     Input(component_id='first_rift_herald', component_property='value'),
+     Input('graph', 'n_clicks')]
+)
+def update_graph(t1, t2, time_min, time_sec, fb, fi, ft, fd, t1tk, t2tk, t1ik, t2ik, first_dragon, first_rift_herald ,n_click):
+    str = 'User Input:   Champion "{}, {}"\n'.format(t1, t2) + 'Time "{} : {}"\n'.format(time_min,
+                                                                                         time_sec) + 'First Blood: "{}"\n'.format(
+        fb) + 'First Inhibitor "{}"\n'.format(fi) + 'First Tower"{}"\n'.format(ft) + 'Dragon "{}"\n'.format(fd)
+
+    if t1 and len(t1) != 5 or t2 and len(t2) != 5:
+        return "Please select 5 champions"
+
+    if not t1 or not t2 or not time_min or not time_sec or not fb or not fi or not ft or not fd:
+        return "Please complete input"
+
+    if n_click and n_click != count:
+        plt = graph(t1, t2, time_min, time_sec, fb, fi, ft, fd, t1tk, t2tk, t1ik, t2ik, first_dragon, first_rift_herald)
+        click(n_click)
+        return plt
+
+
+
+
+
+
+def graph(t1, t2, time_min, time_sec, fb, fi, ft, fd, t1tk, t2tk, t1ik, t2ik, first_dragon, first_rift_herald):
+    copyfile('lib_full.txt', 'lib3.txt')
+
+    for k in range(0,10):
+        for j in range(0,10):
+            line =[100 * time_min + time_sec, 9, fb,ft,fi,fd,first_dragon,first_rift_herald, t1[0],t1[1],t1[2],t1[3],t1[4], k, t1ik, t2[0],t2[1],t2[2],t2[3],t2[4],j,t2ik]
+            test_line = [2]
+            for i in range(len(line)):
+                new_item = "%s:%s" % (i + 1, line[i])
+                test_line.append(new_item)
+
+            print (test_line)
+
+            with open('lib3.txt', 'a') as f:
+                for item in test_line:
+                    f.write("%s " % item)
+                f.write("\n")
+                f.close()
+
+    data = spark.read.format("libsvm").option("numFeatures", "22").load("lib3.txt")
+    (trainingData, testData) = split_by_row_index(data)
+
+    labelIndexer = StringIndexer(inputCol="label", outputCol="indexedLabel").fit(data)
+    featureIndexer = VectorIndexer(inputCol="features", outputCol="indexedFeatures", maxCategories=32).fit(data)
+    gbt = GBTClassifier(labelCol="indexedLabel", featuresCol="indexedFeatures", maxIter=10)
+    pipeline = Pipeline(stages=[labelIndexer, featureIndexer, gbt])
+    model = pipeline.fit(trainingData)
+
+    predictions = model.transform(testData)
+    predictions.show(100, False)
+    result_list = predictions.collect()
+    # try:
+    #     os.remove("lib3.txt")
+    # except:
+    #     print "file not existed"
+
+    x1 = []
+    y1 = []
+
+    x2 = []
+    y2 = []
+
+    result1 = []
+    result2 = []
+#13 , 20
+    for i in range(0, 10):
+        for j in range(0, 10):
+            if result_list[len(result_list) - 1 - 99 + i*10 + j]['prediction'] == 0:
+                result1.append('Team 1 Win')
+                x1.append(i)
+                y1.append(j)
+            else:
+                result2.append('Team 2 Win')
+                x2.append(i)
+                y2.append(j)
+
+    plt = dcc.Graph(
+        id='life-exp-vs-gdp',
+        figure={
+            'data': [
+                go.Scatter(
+                    x= x1,
+                    y= y1,
+                    text= result1,
+                    mode='markers',
+                    opacity=0.7,
+                    marker={
+                        'size': 15,
+                        'line': {'width': 0.5, 'color': 'white'}
+                    },
+                ),
+                go.Scatter(
+                    x=x2,
+                    y=y2,
+                    text=result2,
+                    mode='markers',
+                    opacity=0.7,
+                    marker={
+                        'size': 15,
+                        'line': {'width': 0.5, 'color': 'blue'}
+                    },
+                )
+            ],
+            'layout': go.Layout(
+                xaxis={'type': 'log', 'title': 'Team 1 tower kill'},
+                yaxis={'title': 'Team 2 tower kill'},
+                margin={'l': 40, 'b': 40, 't': 10, 'r': 10},
+                legend={'x': 0, 'y': 1},
+                hovermode='closest'
+            )
+        }
+    )
+
+    return plt
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 @app.callback(
