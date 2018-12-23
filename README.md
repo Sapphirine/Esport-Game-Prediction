@@ -1,5 +1,7 @@
 # Esport-Game-Prediction
 
+project-id: 201812-16
+
 Tong Liu, Kaiji Lu, Rena Ren
 tl2871, kl3065, yr2325
 Columbia University
@@ -11,6 +13,8 @@ E-sports has caught capital’s attention the past 5 years due to the large volu
 However, there’s one blank spot that most traditional sports betting has but not E-sports- that is in-play betting. Different from pre-match betting, In-play betting means players are able to bet during the match. This new type of betting has revolutionized traditional sports betting in the past, growing the market several times over in the space of a few years. 
 
 In this project, we are going to solve the problem of in-game prediction of League of Legends matches, providing a win-lose prediction of two teams during a real time match. This will pave the way for odds calculation of in-game E-sports betting.
+
+
 
 
 anlyse.py: shows the correlation between different features.
